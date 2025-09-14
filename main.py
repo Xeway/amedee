@@ -26,7 +26,6 @@ login_data = {
     "username": USERNAME,
     "password": PASSWORD
 }
-
 r = session.post(
     login_url,
     data=login_data,
@@ -34,16 +33,12 @@ r = session.post(
 )
 r.raise_for_status()
 
-# after login, get the new CSRF token
-xsrf_token = session.cookies.get("XSRF-TOKEN")
-print("CSRF token après login:", xsrf_token)
-
 # (optional) check current user
 me_url = f"{BASE_URL}/api/v1/manage/currentUser"
-r = session.get(me_url, headers={"X-XSRF-TOKEN": xsrf_token})
+r = session.get(me_url)
 print("Current user:", r.json())
 
 # list huts
 huts_url = f"{BASE_URL}/api/v1/manage/hutsList"
-r = session.get(huts_url, headers={"X-XSRF-TOKEN": xsrf_token})
+r = session.get(huts_url)
 print("Huts list:", r.json())
