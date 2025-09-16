@@ -1,0 +1,9 @@
+{{ define "map.html" }}
+{{ template "layout.html" . }}
+{{ define "title" }}Map{{ end }}
+{{ define "content" }}
+  <h1>Huts</h1>
+  <pre>{{ printf "%#v" .Huts }}</pre>
+  <a href="/">Back</a>
+{{ end }}
+{{ end }}

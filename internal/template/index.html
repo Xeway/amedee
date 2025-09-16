@@ -1,0 +1,19 @@
+{{ define "index.html" }}
+{{ template "layout.html" . }}
+{{ define "content" }}
+  <div id="welcome-container">
+      <h2>Welcome to Amedee</h2>
+      <p>Find SAC huts and check availability.</p>
+  </div>
+
+  {{ if not .LoggedInToThirdParty }}
+    <div id="login-modal">
+      {{ template "modal.html" . }}
+    </div>
+  {{ else }}
+    <div id="map-link">
+      <a href="/map" hx-boost="true">Go to map</a>
+    </div>
+  {{ end }}
+{{ end }}
+{{ end }}
