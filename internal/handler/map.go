@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 
@@ -47,10 +48,18 @@ func Map(c *gin.Context) {
 		return
 	}
 
-	b := make([]byte, 0)
-	_, _ = resp.Body.Read(b)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("read hutsList body error:", err)
+		c.String(http.StatusInternalServerError, "Upstream read error")
+		return
+	}
 	var huts interface{}
-	_ = json.Unmarshal(b, &huts)
+	if err := json.Unmarshal(body, &huts); err != nil {
+		log.Println("unmarshal hutsList error:", err, "body=", string(body))
+		c.String(http.StatusInternalServerError, "Invalid upstream data")
+		return
+	}
 
 	c.HTML(http.StatusOK, "map.html", gin.H{"Huts": huts})
 }
