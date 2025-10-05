@@ -8,10 +8,13 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/Xeway/amedee/internal/model"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
+
+func init() {
+	gob.Register([]*http.Cookie{})
+}
 
 const (
 	BaseURL    = "https://www.hut-reservation.org"
@@ -63,21 +66,9 @@ func GetXSRFCookie(client *http.Client) string {
 
 // CookiesToBytes serializes cookies for session storage
 func CookiesToBytes(cookies []*http.Cookie) ([]byte, error) {
-	s := make([]model.SerializableCookie, 0, len(cookies))
-	for _, c := range cookies {
-		s = append(s, model.SerializableCookie{
-			Name:     c.Name,
-			Value:    c.Value,
-			Path:     c.Path,
-			Domain:   c.Domain,
-			Expires:  c.Expires,
-			Secure:   c.Secure,
-			HttpOnly: c.HttpOnly,
-		})
-	}
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
-	if err := enc.Encode(s); err != nil {
+	if err := enc.Encode(cookies); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -85,23 +76,11 @@ func CookiesToBytes(cookies []*http.Cookie) ([]byte, error) {
 
 // BytesToCookies deserializes cookies from session
 func BytesToCookies(b []byte) ([]*http.Cookie, error) {
-	var s []model.SerializableCookie
+	var cookies []*http.Cookie
 	buf := bytes.NewBuffer(b)
 	dec := gob.NewDecoder(buf)
-	if err := dec.Decode(&s); err != nil {
+	if err := dec.Decode(&cookies); err != nil {
 		return nil, err
 	}
-	out := make([]*http.Cookie, 0, len(s))
-	for _, sc := range s {
-		out = append(out, &http.Cookie{
-			Name:     sc.Name,
-			Value:    sc.Value,
-			Path:     sc.Path,
-			Domain:   sc.Domain,
-			Expires:  sc.Expires,
-			Secure:   sc.Secure,
-			HttpOnly: sc.HttpOnly,
-		})
-	}
-	return out, nil
+	return cookies, nil
 }
