@@ -16,7 +16,7 @@ func Login(c *gin.Context) {
 	username := c.PostForm("email")
 	password := c.PostForm("password")
 	if username == "" || password == "" {
-		c.HTML(http.StatusBadRequest, "modal_invalid.html", gin.H{"Error": "Please provide email & password"})
+		c.HTML(http.StatusOK, "modal_invalid.html", gin.H{"Error": "Please provide email & password"})
 		return
 	}
 
@@ -29,7 +29,7 @@ func Login(c *gin.Context) {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println("csrf request error:", err)
-		c.HTML(http.StatusInternalServerError, "modal_invalid.html", gin.H{"Error": "Upstream error (csrf)."})
+		c.HTML(http.StatusOK, "modal_invalid.html", gin.H{"Error": "Upstream error (csrf)."})
 		return
 	}
 	io.Copy(io.Discard, resp.Body)
@@ -38,7 +38,7 @@ func Login(c *gin.Context) {
 	xsrf := session.GetXSRFCookie(client)
 	if xsrf == "" {
 		log.Println("no xsrf cookie received")
-		c.HTML(http.StatusInternalServerError, "modal_invalid.html", gin.H{"Error": "Missing XSRF token from upstream."})
+		c.HTML(http.StatusOK, "modal_invalid.html", gin.H{"Error": "Missing XSRF token from upstream."})
 		return
 	}
 
@@ -56,7 +56,7 @@ func Login(c *gin.Context) {
 	loginResp, err := client.Do(loginReq)
 	if err != nil {
 		log.Println("login call error:", err)
-		c.HTML(http.StatusInternalServerError, "modal_invalid.html", gin.H{"Error": "Upstream login error."})
+		c.HTML(http.StatusOK, "modal_invalid.html", gin.H{"Error": "Upstream login error."})
 		return
 	}
 	defer loginResp.Body.Close()
@@ -64,13 +64,13 @@ func Login(c *gin.Context) {
 
 	if loginResp.StatusCode != http.StatusOK {
 		log.Printf("login failed: status=%d body=%s\n", loginResp.StatusCode, string(bodyBytes))
-		c.HTML(http.StatusUnauthorized, "modal_invalid.html", gin.H{"Error": "Invalid credentials."})
+		c.HTML(http.StatusOK, "modal_invalid.html", gin.H{"Error": "Invalid credentials."})
 		return
 	}
 
 	if err := session.SaveClientCookiesToSession(c, client); err != nil {
 		log.Println("failed to save cookies to session:", err)
-		c.HTML(http.StatusInternalServerError, "modal_invalid.html", gin.H{"Error": "Internal server error."})
+		c.HTML(http.StatusOK, "modal_invalid.html", gin.H{"Error": "Internal server error."})
 		return
 	}
 
