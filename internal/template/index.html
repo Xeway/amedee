@@ -17,15 +17,11 @@
         <p>Find SAC huts and check availability.</p>
     </div>
 
-    {{ if not .LoggedIntoThirdParty }}
-      <div id="login-modal">
-        {{ template "modal.html" . }}
-      </div>
-    {{ else }}
-      <div id="map-link">
-        <a href="/map" hx-boost="true">Go to map</a>
-      </div>
-    {{ end }}
+  <div
+    hx-get="/logged_in"
+    hx-trigger="load"
+    hx-swap="outerHTML"></div>
+
   </main>
   <script src="/static/app.js"></script>
 </body>

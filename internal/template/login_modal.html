@@ -1,18 +1,21 @@
-{{ define "modal.html" }}
-<div class="modal-content" role="dialog" aria-modal="true">
+{{ define "login_modal.html" }}
+<div class="modal-content" id="login-modal" role="dialog" aria-modal="true">
   <h3>Enter your Hut Reservation credentials</h3>
   <p>Your credentials are used only to sign in to the upstream service. They are not stored or shared.</p>
-  <form 
-    hx-post="/login" 
-    hx-target="#login-modal" 
-    hx-swap="outerHTML" 
-    hx-indicator="#spinner" 
+  {{ if .Error }}
+    <p style="color: red;">{{ .Error }}</p>
+  {{ end }}
+  <form
+    hx-post="/login"
+    hx-target="#login-modal"
+    hx-swap="outerHTML"
+    hx-indicator="#spinner"
     method="post"
   >
     <input id="email" name="email" type="email" placeholder="Email" required>
     <input id="password" name="password" type="password" placeholder="Password" required>
     <button type="submit" hx-disable="true">Save</button>
-    <div id="spinner" style="display:none;">Loading...</div>
+    <div id="spinner" style="display: none;">Loading...</div>
   </form>
 </div>
 {{ end }}

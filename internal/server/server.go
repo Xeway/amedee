@@ -25,6 +25,7 @@ func Run() {
 
 	r.GET("/", handler.Home)
 	r.GET("/map", handler.Map)
+	r.GET("/logged_in", handler.LoggedIn)
 	r.POST("/login", handler.Login)
 
 	port := os.Getenv("PORT")
