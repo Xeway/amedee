@@ -4,19 +4,53 @@
 <head>
   <meta charset="UTF-8">
   <title>Amedee - Map</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <script src="/static/lib/htmx.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Include Leaflet CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+        crossorigin integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H">
+
+  <style>
+    /* Set full width and height for the map */
+    html, body, #mapid { height: 100%; margin: 0; }
+  </style>
 </head>
+
 <body>
-  <header>
-    <h1>Amedee</h1>
-  </header>
-  <main>
-    <h1>Huts</h1>
-    <pre>{{ printf "%#v" .Huts }}</pre>
-    <a href="/">Back</a>
-  </main>
-  <script src="/static/app.js"></script>
+  <!-- Element where the map will be attached -->
+  <div id="mapid"></div>
+
+  <!-- Include Leaflet and Leaflet.TileLayer.Swiss JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
+          crossorigin integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH">
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-tilelayer-swiss@2.4.0/dist/Leaflet.TileLayer.Swiss.umd.js"
+          crossorigin integrity="sha384-Euk+jolNu4/WKjgaLQzvOYEpbiH0yAN0sErw27A95bn2MnIB1I52o9twSk23yZyL">
+  </script>
+
+  <script>
+    // Create map and attach id to element with id "mapid"
+    var map = L.map('mapid', {
+      // Use LV95 (EPSG:2056) projection
+      crs: L.CRS.EPSG2056,
+    });
+
+    // Add Swiss layer with default options
+    L.tileLayer.swiss().addTo(map);
+
+    // Center the map on Switzerland
+    map.fitSwitzerland();
+
+    fetch('/huts')
+      .then(response => response.json())
+      .then(huts => {
+        huts.forEach(hut => {
+          L.marker(L.CRS.EPSG2056.unproject(L.point(hut.easting, hut.northing)))
+           .addTo(map)
+           .bindPopup(hut.hutName);
+        });
+      });
+  </script>
 </body>
 </html>
 {{ end }}
