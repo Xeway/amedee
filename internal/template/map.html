@@ -45,9 +45,19 @@
       .then(response => response.json())
       .then(huts => {
         huts.forEach(hut => {
-          L.marker(L.CRS.EPSG2056.unproject(L.point(hut.easting, hut.northing)))
-           .addTo(map)
-           .bindPopup(hut.hutName);
+          if (hut.coordinates) {
+            const parts = hut.coordinates.split(/[,/]+/).map(c => parseFloat(c.trim()));
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+              const [lat, lon] = parts;
+              L.marker([lat, lon])
+              .addTo(map)
+              .bindPopup(hut.hutName);
+            } else {
+              console.error(`Invalid coordinates for hut ${hut.hutName}: ${hut.coordinates}`);
+            }
+          } else {
+            console.error(`No coordinates for hut ${hut.hutName}`);
+          }
         });
       });
   </script>
