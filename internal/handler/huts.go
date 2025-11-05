@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -14,6 +15,12 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
+
+// AvailabilityInfo represents the structure of a single day's availability from the API
+type AvailabilityInfo struct {
+	FreeBeds int       `json:"freeBeds"`
+	Date     time.Time `json:"date"`
+}
 
 func Huts(c *gin.Context) {
 	client, err := session.ClientFromSession(c)
@@ -31,6 +38,42 @@ func Huts(c *gin.Context) {
 		c.Redirect(http.StatusSeeOther, "/")
 		return
 	}
+
+	// --- New: Parameter Handling for Availability Check ---
+	var checkAvailability bool
+	var startDate, endDate time.Time
+	var numPeople int
+
+	startDateStr := c.Query("startDate")
+	endDateStr := c.Query("endDate")
+	numPeopleStr := c.Query("numPeople")
+
+	if startDateStr != "" && endDateStr != "" && numPeopleStr != "" {
+		const layout = "2006-01-02"
+		startDate, err = time.Parse(layout, startDateStr)
+		if err != nil {
+			c.String(http.StatusBadRequest, "Invalid startDate format. Use YYYY-MM-DD.")
+			return
+		}
+		endDate, err = time.Parse(layout, endDateStr)
+		if err != nil {
+			c.String(http.StatusBadRequest, "Invalid endDate format. Use YYYY-MM-DD.")
+			return
+		}
+		if endDate.Before(startDate) {
+			c.String(http.StatusBadRequest, "endDate cannot be before startDate.")
+			return
+		}
+
+		numPeople, err = strconv.Atoi(numPeopleStr)
+		if err != nil || numPeople < 1 {
+			c.String(http.StatusBadRequest, "Invalid numPeople. Must be a positive integer.")
+			return
+		}
+
+		checkAvailability = true
+	}
+	// --- End of New Parameter Handling ---
 
 	hutsURL := session.BaseURL + "/api/v1/manage/hutsList"
 	req, _ := http.NewRequest("GET", hutsURL, nil)
@@ -59,7 +102,6 @@ func Huts(c *gin.Context) {
 		return
 	}
 
-	// Expect an array of hut objects: [{"hutName":"...","hutId":603,...}, ...]
 	var hutsList []map[string]interface{}
 	if err := json.Unmarshal(body, &hutsList); err != nil {
 		log.Println("unmarshal hutsList error:", err, "body=", string(body))
@@ -67,10 +109,8 @@ func Huts(c *gin.Context) {
 		return
 	}
 
-	// Prepare results by copying original items
 	results := make([]map[string]interface{}, len(hutsList))
 	for i := range hutsList {
-		// shallow copy map to avoid races when merging
 		m := make(map[string]interface{}, len(hutsList[i]))
 		for k, v := range hutsList[i] {
 			m[k] = v
@@ -78,20 +118,17 @@ func Huts(c *gin.Context) {
 		results[i] = m
 	}
 
-	// Concurrency control
 	const maxConcurrency = 8
 	sem := make(chan struct{}, maxConcurrency)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
 	for i, hut := range hutsList {
-		// extract hutId
 		idVal, ok := hut["hutId"]
 		if !ok {
 			continue
 		}
 
-		// normalize hutId to string
 		var hutIDStr string
 		switch v := idVal.(type) {
 		case float64:
@@ -110,24 +147,24 @@ func Huts(c *gin.Context) {
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			// use a short timeout per hut info request
-			ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // Increased timeout for multiple requests
 			defer cancel()
 
+			// --- Request 1: Get Hut Info (Existing Logic) ---
 			hutInfoURL := session.BaseURL + "/api/v1/reservation/hutInfo/" + id
-			req, _ := http.NewRequestWithContext(ctx, "GET", hutInfoURL, nil)
-			req.Header.Set("X-XSRF-TOKEN", xsrf)
-			req.Header.Set("Accept", "application/json")
+			reqInfo, _ := http.NewRequestWithContext(ctx, "GET", hutInfoURL, nil)
+			reqInfo.Header.Set("X-XSRF-TOKEN", xsrf)
+			reqInfo.Header.Set("Accept", "application/json")
 
-			resp, err := client.Do(req)
+			var hutInfo map[string]interface{}
+			respInfo, err := client.Do(reqInfo)
 			if err != nil {
 				log.Println("hutInfo error for hutId", id, ":", err)
-				return
+				return // Continue to next hut
 			}
-			defer resp.Body.Close()
+			defer respInfo.Body.Close()
 
-			if resp.StatusCode == http.StatusUnauthorized {
-				// If upstream revoked auth, clear session and stop
+			if respInfo.StatusCode == http.StatusUnauthorized {
 				mu.Lock()
 				sess := sessions.Default(c)
 				sess.Delete(session.SessionKey)
@@ -136,28 +173,87 @@ func Huts(c *gin.Context) {
 				return
 			}
 
-			b, err := io.ReadAll(resp.Body)
+			bodyInfo, err := io.ReadAll(respInfo.Body)
 			if err != nil {
 				log.Println("read hutInfo body err for hutId", id, ":", err)
-				return
+			} else {
+				if err := json.Unmarshal(bodyInfo, &hutInfo); err != nil {
+					log.Println("unmarshal hutInfo error for hutId", id, ":", err, "body=", string(bodyInfo))
+				}
 			}
 
-			var info map[string]interface{}
-			if err := json.Unmarshal(b, &info); err != nil {
-				log.Println("unmarshal hutInfo error for hutId", id, ":", err, "body=", string(b))
-				return
+			// --- Request 2: Get Hut Availability (New Logic) ---
+			isAvailable := false // Default to false if check is enabled
+			if checkAvailability {
+				availURL := fmt.Sprintf("%s/api/v1/reservation/getHutAvailability?hutId=%s&step=WIZARD", session.BaseURL, id)
+				reqAvail, _ := http.NewRequestWithContext(ctx, "GET", availURL, nil)
+				reqAvail.Header.Set("X-XSRF-TOKEN", xsrf)
+				reqAvail.Header.Set("Accept", "application/json")
+
+				respAvail, err := client.Do(reqAvail)
+				if err != nil {
+					log.Printf("hutAvailability error for hutId %s: %v", id, err)
+				} else {
+					defer respAvail.Body.Close()
+					if respAvail.StatusCode == http.StatusOK {
+						bodyAvail, err := io.ReadAll(respAvail.Body)
+						if err != nil {
+							log.Printf("read hutAvailability body err for hutId %s: %v", id, err)
+						} else {
+							var availabilityData []AvailabilityInfo
+							if err := json.Unmarshal(bodyAvail, &availabilityData); err != nil {
+								log.Printf("unmarshal hutAvailability err for hutId %s: %v, body=%s", id, err, string(bodyAvail))
+							} else {
+								// Process the data to check availability for the date range
+								isAvailable = isHutAvailableForRange(availabilityData, startDate, endDate, numPeople)
+							}
+						}
+					}
+				}
 			}
 
-			// Merge info into results[idx]
+			// --- Merge all results under a lock ---
 			mu.Lock()
-			for k, v := range info {
+			defer mu.Unlock()
+
+			// Merge info from the first request
+			for k, v := range hutInfo {
 				results[idx][k] = v
 			}
-			mu.Unlock()
+
+			// Add availability status from the second request
+			if checkAvailability {
+				results[idx]["isAvailable"] = isAvailable
+			}
 		}(i, hutIDStr)
 	}
 
 	wg.Wait()
 
 	c.JSON(http.StatusOK, results)
+}
+
+// isHutAvailableForRange checks if a hut has enough free beds for the entire date range.
+func isHutAvailableForRange(availabilityData []AvailabilityInfo, start, end time.Time, numPeople int) bool {
+	// Create a map for quick lookup of free beds by date.
+	bedsByDate := make(map[string]int)
+	for _, day := range availabilityData {
+		// Key by "YYYY-MM-DD"
+		dateKey := day.Date.Format("2006-01-02")
+		bedsByDate[dateKey] = day.FreeBeds
+	}
+
+	// Iterate through every day in the requested range.
+	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
+		dateKey := d.Format("2006-01-02")
+		freeBeds, ok := bedsByDate[dateKey]
+
+		// If a day is missing from the data OR has too few beds, the hut is not available.
+		if !ok || freeBeds < numPeople {
+			return false
+		}
+	}
+
+	// If all days in the range have enough beds, the hut is available.
+	return true
 }
