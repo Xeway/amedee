@@ -13,7 +13,7 @@ func LoggedIn(c *gin.Context) {
 	isLoggedIn := sess.Get(session.SessionKey) != nil
 
 	if isLoggedIn {
-		c.HTML(http.StatusOK, "links.html", gin.H{"LoggedIn": true})
+		c.HTML(http.StatusOK, "links.html", nil)
 	} else {
 		c.HTML(http.StatusOK, "login_modal.html", nil)
 	}
