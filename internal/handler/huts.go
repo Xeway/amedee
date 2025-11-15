@@ -109,6 +109,14 @@ func Huts(c *gin.Context) {
 		return
 	}
 
+	var filteredHuts []map[string]interface{}
+	for _, hut := range hutsList {
+		if hut["hutCountry"] == "CH" {
+			filteredHuts = append(filteredHuts, hut)
+		}
+	}
+	hutsList = filteredHuts
+
 	results := make([]map[string]interface{}, len(hutsList))
 	for i := range hutsList {
 		m := make(map[string]interface{}, len(hutsList[i]))
@@ -150,7 +158,7 @@ func Huts(c *gin.Context) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // Increased timeout for multiple requests
 			defer cancel()
 
-			// --- Request 1: Get Hut Info (Existing Logic) ---
+			// --- Request 1: Get Hut Info ---
 			hutInfoURL := session.BaseURL + "/api/v1/reservation/hutInfo/" + id
 			reqInfo, _ := http.NewRequestWithContext(ctx, "GET", hutInfoURL, nil)
 			reqInfo.Header.Set("X-XSRF-TOKEN", xsrf)
@@ -182,7 +190,7 @@ func Huts(c *gin.Context) {
 				}
 			}
 
-			// --- Request 2: Get Hut Availability (New Logic) ---
+			// --- Request 2: Get Hut Availability ---
 			isAvailable := false // Default to false if check is enabled
 			if checkAvailability {
 				availURL := fmt.Sprintf("%s/api/v1/reservation/getHutAvailability?hutId=%s&step=WIZARD", session.BaseURL, id)

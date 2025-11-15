@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
         crossorigin integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H">
 
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
   <style>
     /* Set full width and height for the map */
     html, body, #mapid { height: 100%; margin: 0; }
@@ -48,6 +49,8 @@
     // Center the map on Switzerland
     map.fitSwitzerland();
 
+    var markerGroup = L.layerGroup().addTo(map);
+
     document.getElementById('filterButton').addEventListener('click', function() {
       const startDate = document.getElementById('startDate').value;
       const endDate = document.getElementById('endDate').value;
@@ -60,6 +63,8 @@
       }).toString())
       .then(response => response.json())
       .then(huts => {
+        markerGroup.clearLayers();
+
         huts.forEach(hut => {
           if (hut.coordinates) {
             const parts = hut.coordinates.split(/[,/]+/).map(c => parseFloat(c.trim()));
@@ -81,9 +86,7 @@
                 popupAnchor: [1, -34],
                 shadowSize: [41, 41]
               });
-              L.marker([lat, lon], {icon: hut.isAvailable ? greenIcon : redIcon})
-              .addTo(map)
-              .bindPopup(hut.hutName);
+              L.marker([lat, lon], {icon: hut.isAvailable ? greenIcon : redIcon}).bindPopup(hut.hutName).addTo(markerGroup);
             } else {
               console.error(`Invalid coordinates for hut ${hut.hutName}: ${hut.coordinates}`);
             }
@@ -94,6 +97,7 @@
       });
     });
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 </body>
 </html>
 {{ end }}
