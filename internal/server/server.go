@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/Xeway/amedee/internal/handler"
+	"github.com/Xeway/amedee/internal/middleware"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
@@ -24,8 +25,8 @@ func Run() {
 	r.LoadHTMLGlob("internal/template/*.html")
 
 	r.GET("/", handler.Home)
-	r.GET("/map", handler.Map)
-	r.GET("/huts", handler.Huts)
+	r.GET("/map", middleware.IsConnectedMiddleware(), handler.Map)
+	r.GET("/huts", middleware.IsConnectedMiddleware(), handler.Huts)
 	r.GET("/logged_in", handler.LoggedIn)
 	r.POST("/login", handler.Login)
 

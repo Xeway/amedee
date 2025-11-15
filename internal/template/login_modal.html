@@ -1,9 +1,9 @@
 {{ define "login_modal.html" }}
 <div class="card shadow-sm mx-auto" id="login-modal" style="max-width: 450px;">
   <div class="card-body">
-    <h3 class="card-title text-center mb-3">Hut Reservation Credentials</h3>
+    <h3 class="card-title text-center mb-3">Login with your Hut Reservation credentials</h3>
     <p class="card-text text-muted small">Your credentials are used only to sign in to the upstream service. They are not stored or shared.</p>
-    
+
     {{ if .Error }}
       <div class="alert alert-danger" role="alert">
         {{ .Error }}
