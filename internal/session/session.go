@@ -3,6 +3,7 @@ package session
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -21,29 +22,34 @@ func init() {
 
 // ClientFromSession builds an http.Client with cookies from session
 func ClientFromSession(c *gin.Context) (*http.Client, error) {
+	sess := sessions.Default(c)
+	raw := sess.Get(global.SessionKey)
+	if raw == nil {
+		return nil, errors.New("session is empty")
+	}
+
 	jar, _ := cookiejar.New(nil)
 	u, _ := url.Parse(global.BaseURL)
 
-	sess := sessions.Default(c)
-	raw := sess.Get(global.SessionKey)
-	if raw != nil {
-		if raw == "anonymous" {
-			// connect with an account
-			client := &http.Client{Jar: jar, Timeout: 20 * 1e9}
-			err := utils.Connect(client, os.Getenv("ANONYMOUS_USERNAME"), os.Getenv("ANONYMOUS_PASSWORD"))
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			if b, ok := raw.([]byte); ok {
-				cs, err := BytesToCookies(b)
-				if err != nil {
-					return nil, err
-				}
-				jar.SetCookies(u, cs)
-			}
+	// if session is anonymous, we connect with a pre-defined account
+	if raw == "anonymous" {
+		// connect with an account
+		client := &http.Client{Jar: jar, Timeout: 20 * 1e9}
+		err := utils.Connect(client, os.Getenv("ANONYMOUS_USERNAME"), os.Getenv("ANONYMOUS_PASSWORD"))
+		if err != nil {
+			return nil, err
 		}
+		return client, nil
 	}
+
+	if b, ok := raw.([]byte); ok {
+		cs, err := BytesToCookies(b)
+		if err != nil {
+			return nil, err
+		}
+		jar.SetCookies(u, cs)
+	}
+
 	return &http.Client{Jar: jar, Timeout: 20 * time.Second}, nil
 }
 
