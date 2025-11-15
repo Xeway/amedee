@@ -9,7 +9,6 @@ import (
 )
 
 func Logout(c *gin.Context) {
-
 	sess := sessions.Default(c)
 	sess.Delete(global.SessionKey)
 	sess.Save()

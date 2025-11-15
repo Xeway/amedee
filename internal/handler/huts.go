@@ -22,7 +22,7 @@ func Huts(c *gin.Context) {
 	client, err := session.ClientFromSession(c)
 	if err != nil {
 		log.Println("clientFromSession err:", err)
-		c.Redirect(http.StatusSeeOther, "/")
+		c.String(http.StatusUnauthorized, "Session problem")
 		return
 	}
 
@@ -78,7 +78,7 @@ func Huts(c *gin.Context) {
 		sess := sessions.Default(c)
 		sess.Delete(global.SessionKey)
 		_ = sess.Save()
-		c.Redirect(http.StatusSeeOther, "/")
+		c.String(http.StatusUnauthorized, "Session problem")
 		return
 	}
 

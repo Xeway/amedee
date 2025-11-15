@@ -26,7 +26,7 @@ func Run() {
 
 	r.GET("/", handler.Home)
 	r.GET("/map", middleware.IsConnectedMiddleware(), handler.Map)
-	r.GET("/huts", middleware.IsConnectedMiddleware(), handler.Huts)
+	r.GET("/huts", handler.Huts)
 	r.GET("/logged_in", handler.LoggedIn)
 	r.POST("/login", handler.Login)
 	r.POST("/logout", handler.Logout)
