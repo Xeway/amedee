@@ -1,6 +1,10 @@
 {{ define "links.html" }}
 <div id="map-link">
-  <a href="/map" hx-boost="true" hx-indicator="#spinner">Go to map</a>
-  <div id="spinner" style="display: none;">Loading...</div>
+  <a href="/map" class="btn btn-success btn-lg" hx-indicator="#spinner">
+    Go to map
+  </a>
+  <div id="spinner" class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
 </div>
 {{ end }}

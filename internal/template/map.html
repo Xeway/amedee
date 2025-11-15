@@ -11,22 +11,83 @@
         crossorigin integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H">
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+
   <style>
-    /* Set full width and height for the map */
-    html, body, #mapid { height: 100%; margin: 0; }
+    /* Use Flexbox to create a layout with a header and a map that fills the remaining space */
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden; /* Prevent scrollbars from appearing */
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* The map container will grow to fill all available vertical space */
+    #map-container {
+      flex-grow: 1;
+      /* We need a container for the map so it knows its height */
+    }
+
+    #mapid {
+      height: 100%;
+      width: 100%;
+    }
   </style>
 </head>
 
 <body>
-  <div class="filters">
-    <input type="date" id="startDate" name="startDate" placeholder="Date of arrival">
-    <input type="date" id="endDate" name="endDate" placeholder="Date of departure">
-    <input type="number" id="numPeople" name="numPeople" placeholder="Number of people" min="1" step="1">
-    <button id="filterButton">Filter Huts</button>
+  <!-- Bootstrap Navbar for Filters -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">Amedee</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#filterNavbar" aria-controls="filterNavbar" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="filterNavbar">
+        <!-- Use a form for better structure and alignment -->
+        <form class="ms-auto d-flex flex-wrap align-items-center">
+          <div class="me-2 my-1">
+            <label for="startDate" class="visually-hidden">Start Date</label>
+            <input type="date" class="form-control form-control-sm" id="startDate" name="startDate" title="Date of arrival">
+          </div>
+          <div class="me-2 my-1">
+            <label for="endDate" class="visually-hidden">End Date</label>
+            <input type="date" class="form-control form-control-sm" id="endDate" name="endDate" title="Date of departure">
+          </div>
+          <div class="me-2 my-1">
+            <label for="numPeople" class="visually-hidden">Number of People</label>
+            <input type="number" class="form-control form-control-sm" id="numPeople" name="numPeople" placeholder="Number of guests" min="1" step="1" style="width: 100px;">
+          </div>
+          <button id="filterButton" type="button" class="btn btn-primary btn-sm my-1">Filter Huts</button>
+        </form>
+      </div>
+    </div>
+  </nav>
+
+  <!-- We wrap the map in a container to help with the flexbox layout -->
+  <div id="map-container">
+    <div id="mapid"></div>
   </div>
 
-  <!-- Element where the map will be attached -->
-  <div id="mapid"></div>
+  <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="errorModalLabel">An Error Occurred</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="errorModalBody">
+          <!-- Error message will be injected here -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Include Leaflet and Leaflet.TileLayer.Swiss JavaScript -->
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
@@ -35,6 +96,9 @@
   <script src="https://cdn.jsdelivr.net/npm/leaflet-tilelayer-swiss@2.4.0/dist/Leaflet.TileLayer.Swiss.umd.js"
           crossorigin integrity="sha384-Euk+jolNu4/WKjgaLQzvOYEpbiH0yAN0sErw27A95bn2MnIB1I52o9twSk23yZyL">
   </script>
+
+  <!-- Include Bootstrap JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 
   <script>
     // Create map and attach id to element with id "mapid"
@@ -51,17 +115,28 @@
 
     var markerGroup = L.layerGroup().addTo(map);
 
+    const errorModalElement = document.getElementById('errorModal');
+    const errorModal = new bootstrap.Modal(errorModalElement);
+
     document.getElementById('filterButton').addEventListener('click', function() {
       const startDate = document.getElementById('startDate').value;
       const endDate = document.getElementById('endDate').value;
       const numPeople = document.getElementById('numPeople').value;
+      const filterButton = document.getElementById('filterButton');
+
+      // Add a loading state to the button
+      filterButton.disabled = true;
+      filterButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
 
       fetch('/huts?' + new URLSearchParams({
         startDate: startDate,
         endDate: endDate,
         numPeople: numPeople
       }).toString())
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) { throw new Error('Network response was not ok'); }
+        return response.json();
+      })
       .then(huts => {
         markerGroup.clearLayers();
 
@@ -94,10 +169,19 @@
             console.error(`No coordinates for hut ${hut.hutName}`);
           }
         });
+      })
+      .catch(error => {
+        console.error('There has been a problem with your fetch operation:', error);
+        document.getElementById('errorModalBody').textContent = `Failed to load hut data. Please try again. Details: ${error.message}`;
+        errorModal.show();
+      })
+      .finally(() => {
+          // Reset button state after fetch is complete
+          filterButton.disabled = false;
+          filterButton.textContent = 'Filter Huts';
       });
     });
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 </body>
 </html>
 {{ end }}

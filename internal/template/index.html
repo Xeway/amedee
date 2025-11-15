@@ -4,25 +4,41 @@
 <head>
   <meta charset="UTF-8">
   <title>Amedee</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
   <script src="/static/lib/htmx.min.js"></script>
+  <style>
+    /* A simple class to show/hide the htmx spinner */
+    .htmx-indicator { display:none; }
+    .htmx-request .htmx-indicator { display:inline-block; }
+  </style>
 </head>
-<body>
-  <header>
-    <h1>Amedee</h1>
-  </header>
-  <main>
-    <div id="welcome-container">
-        <h2>Welcome to Amedee</h2>
-        <p>Find SAC huts and check availability.</p>
+<body class="bg-light">
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+      <a class="navbar-brand" href="#">Amedee</a>
     </div>
+  </nav>
 
-    <div
-      hx-get="/logged_in"
-      hx-trigger="load"
-      hx-swap="outerHTML"></div>
+  <main class="container mt-5">
+    <div class="p-5 bg-white rounded-3 shadow-sm text-center">
+      <h1 class="display-4">Welcome to Amedee</h1>
+      <p class="lead">Find available Swiss huts on a map.</p>
+      <hr class="my-4">
 
+      <div id="auth-container"
+        hx-get="/logged_in"
+        hx-trigger="load"
+        hx-swap="outerHTML">
+          <!-- Show a spinner while checking login status on page load -->
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+      </div>
+    </div>
   </main>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 </body>
 </html>
