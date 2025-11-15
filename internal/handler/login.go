@@ -51,14 +51,13 @@ func Login(c *gin.Context) {
 		c.HTML(http.StatusOK, "login_modal.html", gin.H{"Error": "Upstream error (current user)."})
 		return
 	}
-	io.Copy(io.Discard, respUser.Body)
-	respUser.Body.Close()
 	if respUser.StatusCode != http.StatusOK {
 		log.Printf("current user request failed with status code %d", respUser.StatusCode)
 		c.HTML(http.StatusOK, "login_modal.html", gin.H{"Error": "Upstream error (current user)."})
 		return
 	}
 	bodyUser, err := io.ReadAll(respUser.Body)
+	defer respUser.Body.Close()
 	if err != nil {
 		log.Println("current user read error:", err)
 		c.HTML(http.StatusOK, "login_modal.html", gin.H{"Error": "Upstream error (current user)."})
