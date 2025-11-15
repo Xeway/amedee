@@ -41,7 +41,7 @@ func ClientFromSession(c *gin.Context) (*http.Client, error) {
 }
 
 // SaveClientCookiesToSession saves cookies from client jar into session
-func SaveClientCookiesToSession(c *gin.Context, client *http.Client) error {
+func SaveClientCookiesToSession(c *gin.Context, client *http.Client, sessionDuration float64) error {
 	u, _ := url.Parse(BaseURL)
 	cookies := client.Jar.Cookies(u)
 	b, err := CookiesToBytes(cookies)
@@ -50,6 +50,9 @@ func SaveClientCookiesToSession(c *gin.Context, client *http.Client) error {
 	}
 	sess := sessions.Default(c)
 	sess.Set(SessionKey, b)
+	sess.Options(sessions.Options{
+		MaxAge: int(sessionDuration),
+	})
 	return sess.Save()
 }
 

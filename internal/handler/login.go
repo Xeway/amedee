@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -68,7 +69,40 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	if err := session.SaveClientCookiesToSession(c, client); err != nil {
+	// Get current user to retrieve session duration
+	var userInfo map[string]interface{}
+
+	currentUserUrl := session.BaseURL + "/api/v1/manage/currentUser"
+	req, _ = http.NewRequest("GET", currentUserUrl, nil)
+	req.Header.Set("User-Agent", "Amedee/1.0")
+
+	respUser, err := client.Do(req)
+	if err != nil {
+		log.Println("current user request error:", err)
+		c.HTML(http.StatusOK, "login_modal.html", gin.H{"Error": "Upstream error (current user)."})
+		return
+	}
+	defer respUser.Body.Close()
+	if respUser.StatusCode != http.StatusOK {
+		log.Printf("current user request failed: status=%d body=%s\n", respUser.StatusCode, string(bodyBytes))
+		c.HTML(http.StatusOK, "login_modal.html", gin.H{"Error": "Upstream error (current user)."})
+		return
+	}
+	bodyUser, err := io.ReadAll(respUser.Body)
+	if err != nil {
+		log.Println("current user read error:", err)
+		c.HTML(http.StatusOK, "login_modal.html", gin.H{"Error": "Upstream error (current user)."})
+		return
+	} else {
+		if err := json.Unmarshal(bodyUser, &userInfo); err != nil {
+			log.Println("current user unmarshal error:", err)
+			c.HTML(http.StatusOK, "login_modal.html", gin.H{"Error": "Upstream error (current user)."})
+			return
+		}
+	}
+	sessionDuration := userInfo["sessionTimeout"].(float64)
+
+	if err := session.SaveClientCookiesToSession(c, client, sessionDuration); err != nil {
 		log.Println("failed to save cookies to session:", err)
 		c.HTML(http.StatusOK, "login_modal.html", gin.H{"Error": "Internal server error."})
 		return
