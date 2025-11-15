@@ -29,6 +29,7 @@ func Run() {
 	r.GET("/huts", middleware.IsConnectedMiddleware(), handler.Huts)
 	r.GET("/logged_in", handler.LoggedIn)
 	r.POST("/login", handler.Login)
+	r.POST("/logout", handler.Logout)
 
 	port := os.Getenv("PORT")
 	if port == "" {

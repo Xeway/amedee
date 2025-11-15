@@ -11,30 +11,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Xeway/amedee/internal/global"
+	"github.com/Xeway/amedee/internal/model"
 	"github.com/Xeway/amedee/internal/session"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
-// AvailabilityInfo represents the structure of a single day's availability from the API
-type AvailabilityInfo struct {
-	FreeBeds int       `json:"freeBeds"`
-	Date     time.Time `json:"date"`
-}
-
 func Huts(c *gin.Context) {
 	client, err := session.ClientFromSession(c)
 	if err != nil {
 		log.Println("clientFromSession err:", err)
-		c.Redirect(http.StatusSeeOther, "/")
-		return
-	}
-
-	xsrf := session.GetXSRFCookie(client)
-	if xsrf == "" {
-		sess := sessions.Default(c)
-		sess.Delete(session.SessionKey)
-		_ = sess.Save()
 		c.Redirect(http.StatusSeeOther, "/")
 		return
 	}
@@ -75,9 +62,8 @@ func Huts(c *gin.Context) {
 	}
 	// --- End of New Parameter Handling ---
 
-	hutsURL := session.BaseURL + "/api/v1/manage/hutsList"
+	hutsURL := global.BaseURL + "/api/v1/manage/hutsList"
 	req, _ := http.NewRequest("GET", hutsURL, nil)
-	req.Header.Set("X-XSRF-TOKEN", xsrf)
 	req.Header.Set("Accept", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
@@ -86,10 +72,11 @@ func Huts(c *gin.Context) {
 		return
 	}
 	defer resp.Body.Close()
+	client.Jar = nil // for the next requests, no need to use the cookies
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		sess := sessions.Default(c)
-		sess.Delete(session.SessionKey)
+		sess.Delete(global.SessionKey)
 		_ = sess.Save()
 		c.Redirect(http.StatusSeeOther, "/")
 		return
@@ -159,9 +146,8 @@ func Huts(c *gin.Context) {
 			defer cancel()
 
 			// --- Request 1: Get Hut Info ---
-			hutInfoURL := session.BaseURL + "/api/v1/reservation/hutInfo/" + id
+			hutInfoURL := global.BaseURL + "/api/v1/reservation/hutInfo/" + id
 			reqInfo, _ := http.NewRequestWithContext(ctx, "GET", hutInfoURL, nil)
-			reqInfo.Header.Set("X-XSRF-TOKEN", xsrf)
 			reqInfo.Header.Set("Accept", "application/json")
 
 			var hutInfo map[string]interface{}
@@ -175,7 +161,7 @@ func Huts(c *gin.Context) {
 			if respInfo.StatusCode == http.StatusUnauthorized {
 				mu.Lock()
 				sess := sessions.Default(c)
-				sess.Delete(session.SessionKey)
+				sess.Delete(global.SessionKey)
 				_ = sess.Save()
 				mu.Unlock()
 				return
@@ -193,9 +179,8 @@ func Huts(c *gin.Context) {
 			// --- Request 2: Get Hut Availability ---
 			isAvailable := false // Default to false if check is enabled
 			if checkAvailability {
-				availURL := fmt.Sprintf("%s/api/v1/reservation/getHutAvailability?hutId=%s&step=WIZARD", session.BaseURL, id)
+				availURL := fmt.Sprintf("%s/api/v1/reservation/getHutAvailability?hutId=%s&step=WIZARD", global.BaseURL, id)
 				reqAvail, _ := http.NewRequestWithContext(ctx, "GET", availURL, nil)
-				reqAvail.Header.Set("X-XSRF-TOKEN", xsrf)
 				reqAvail.Header.Set("Accept", "application/json")
 
 				respAvail, err := client.Do(reqAvail)
@@ -208,7 +193,7 @@ func Huts(c *gin.Context) {
 						if err != nil {
 							log.Printf("read hutAvailability body err for hutId %s: %v", id, err)
 						} else {
-							var availabilityData []AvailabilityInfo
+							var availabilityData []model.AvailabilityInfo
 							if err := json.Unmarshal(bodyAvail, &availabilityData); err != nil {
 								log.Printf("unmarshal hutAvailability err for hutId %s: %v, body=%s", id, err, string(bodyAvail))
 							} else {
@@ -242,7 +227,7 @@ func Huts(c *gin.Context) {
 }
 
 // isHutAvailableForRange checks if a hut has enough free beds for the entire date range.
-func isHutAvailableForRange(availabilityData []AvailabilityInfo, start, end time.Time, numPeople int) bool {
+func isHutAvailableForRange(availabilityData []model.AvailabilityInfo, start, end time.Time, numPeople int) bool {
 	// Create a map for quick lookup of free beds by date.
 	bedsByDate := make(map[string]int)
 	for _, day := range availabilityData {

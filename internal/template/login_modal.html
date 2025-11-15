@@ -17,11 +17,40 @@
       hx-indicator="#spinner"
       method="post"
     >
-      <div class="mb-3">
+      <div class="d-flex justify-content-center align-items-center mb-3">
+        <input
+          class="form-check-input me-2"
+          type="checkbox"
+          value="1"
+          id="anonymous"
+          name="anonymous"
+          hx-on:change="
+            const hide = this.checked;
+
+            const emailGroup = document.getElementById('email-group');
+            const passGroup = document.getElementById('password-group');
+            const email = document.getElementById('email');
+            const pass = document.getElementById('password');
+
+            emailGroup.style.display = hide ? 'none' : '';
+            passGroup.style.display = hide ? 'none' : '';
+
+            email.required = !hide;
+            pass.required = !hide;
+
+            email.disabled = hide;
+            pass.disabled = hide;
+          "
+        >
+        <label class="form-check-label" for="anonymous" title="By login as an anonymous, you will have limited access for some (future) features.">Login as anonymous</label>
+      </div>
+
+      <div class="mb-3" id="email-group">
         <label for="email" class="form-label visually-hidden">Email</label>
         <input id="email" name="email" type="email" class="form-control" placeholder="Email" required>
       </div>
-      <div class="mb-3">
+
+      <div class="mb-3" id="password-group">
         <label for="password" class="form-label visually-hidden">Password</label>
         <input id="password" name="password" type="password" class="form-control" placeholder="Password" required>
       </div>
@@ -29,6 +58,7 @@
       <div class="d-grid">
         <button type="submit" class="btn btn-primary" hx-disable>Login</button>
       </div>
+
       <div id="spinner" class="htmx-indicator text-center mt-2">
         <div class="spinner-border spinner-border-sm" role="status">
           <span class="visually-hidden">Loading...</span>
