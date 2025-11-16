@@ -155,7 +155,7 @@
                 popupAnchor: [1, -34],
                 shadowSize: [41, 41]
               });
-              L.marker([lat, lon], {icon: hut.isAvailable ? greenIcon : redIcon}).bindPopup("<a href=\"https://www.hut-reservation.org/reservation/book-hut/"+hut.hutId+"/wizard\">"+hut.hutName+"</a>").addTo(markerGroup);
+              L.marker([lat, lon], {icon: hut.isAvailable ? greenIcon : redIcon}).bindPopup("<a href=\"https://www.hut-reservation.org/reservation/book-hut/"+hut.hutId+"/wizard\" target=\"_blank\">"+hut.hutName+"</a>").addTo(markerGroup);
             } else {
               console.error(`Invalid coordinates for hut ${hut.hutName}: ${hut.coordinates}`);
             }
